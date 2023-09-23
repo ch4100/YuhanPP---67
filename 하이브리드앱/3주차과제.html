@@ -170,7 +170,7 @@
         const button3 = document.getElementById("button3");
         const outputText = document.getElementById("output-text");
         let textForButton1 = "차현도입니다."; // 버튼 1의 텍스트를 저장할 변수
-        let textForButton2 = "아무거나 적기"; // 버튼 2의 텍스트를 저장할 변수
+        let textForButton2 = "아무거나적기"; // 버튼 2의 텍스트를 저장할 변수
         let textForButton3 = ""; // 버튼 3의 텍스트를 저장할 변수
 
         button1.addEventListener("click", function () {
@@ -190,8 +190,11 @@
             outputText.textContent = "저장되었습니다.";
 
             // "button1"과 "button2"의 출력 텍스트를 "내용이 없습니다."로 바꿉니다.
-            textForButton1 = "내용이 없습니다.";
-            textForButton2 = "내용이 없습니다.";
+            if ( textForButton1 == "차현도입니다.")
+            {textForButton1 = "내용이 없습니다.";}
+            
+            if ( textForButton2 == "아무거나적기")
+            {textForButton2 = "내용이 없습니다.";}
         });
     </script>
     
