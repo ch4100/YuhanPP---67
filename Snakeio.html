@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="ByamCanvas" width="800" height="500" style="border: 2px solid black;"></canvas>
+
+    <div id="gameInfo" style="position: absolute; bottom: 10px; left: 10px; color: black;">
+        <span id="scoreInfo" style="font-size: 20px;"></span><br>
+        <span id="lengthInfo" style="font-size: 20px;"></span><br>
+        <span id="timeInfo" style="font-size: 20px;"></span>
+    </div>
+
+    <script>
+        var canvas = document.getElementById('ByamCanvas');
+        var context = canvas.getContext('2d');
+        var mouseX = 0;
+        var mouseY = 0;
+        var playerSize = 20;
+        var playerX = canvas.width / 2;
+        var playerY = canvas.height / 2;
+        var speed = 3;
+        var bodySize = playerSize / 3;
+        var bodyParts = [{ x: playerX, y: playerY }];
+        var foodSize = 15;
+        var foodX = Math.random() * canvas.width;
+        var foodY = Math.random() * canvas.height;
+        var score = 0;
+        var isAccelerating = false;
+        var obstacles = [];
+        var gameSpeed = 3; // 게임 난이도 조정
+        var gameTimer = 0;
+        var snakeLength = 3;
+        var stopThreshold = 5; // 필요에 따라 조정
+        var isGameOver = false;
+
+        // 장애물을 추가하는 함수
+function addObstacle() {
+    var obstacleTypes = ['circle', 'triangle', 'rectangle'];
+    for (var i = 0; i < 5; i++) {
+        var obstacleType = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
+        var obstacle = {
+            x: 0,
+            y: 0,
+            type: obstacleType,
+            size: 20,
+            speedX: 0,
+            speedY: 0,
+            rotation: 0,
+            rotationSpeed: (Math.random() - 0.5) * 0.1,
+            color: getRandomColor(),
+        };
+
+        // 캔버스 가장자리에서 무작위 시작 위치 선택
+        var edge = Math.floor(Math.random() * 4); // 0, 1, 2, 또는 3
+
+        switch (edge) {
+            case 0: // 상단 가장자리
+                obstacle.x = Math.random() * canvas.width;
+                obstacle.y = -obstacle.size / 2;
+                obstacle.speedY = Math.random() * gameSpeed;
+                break;
+            case 1: // 오른쪽 가장자리
+                obstacle.x = canvas.width + obstacle.size / 2;
+                obstacle.y = Math.random() * canvas.height;
+                obstacle.speedX = -Math.random() * gameSpeed;
+                break;
+            case 2: // 하단 가장자리
+                obstacle.x = Math.random() * canvas.width;
+                obstacle.y = canvas.height + obstacle.size / 2;
+                obstacle.speedY = -Math.random() * gameSpeed;
+                break;
+            case 3: // 왼쪽 가장자리
+                obstacle.x = -obstacle.size / 2;
+                obstacle.y = Math.random() * canvas.height;
+                obstacle.speedX = Math.random() * gameSpeed;
+                break;
+        }
+
+        obstacles.push(obstacle);
+    }
+}
+
+        // 장애물과 충돌을 확인하는 함수
+        function checkCollisionWithObstacles() {
+            for (var i = 0; i < obstacles.length; i++) {
+                var obstacle = obstacles[i];
+                var obstacleRadius = obstacle.size / 2;
+                var obstacleCenterX = obstacle.x + obstacleRadius;
+                var obstacleCenterY = obstacle.y + obstacleRadius;
+                var playerCenterX = playerX + playerSize / 2;
+                var playerCenterY = playerY + playerSize / 2;
+
+                var dx = playerCenterX - obstacleCenterX;
+                var dy = playerCenterY - obstacleCenterY;
+                var distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < playerSize / 2 + obstacleRadius) {
+                    // 뱀이 장애물에 부딪혔을 때
+                    isGameOver = true;
+                    clearInterval(gameInterval);
+                    alert('게임 오버! 점수: ' + score + ', 뱀 길이: ' + snakeLength);
+                }
+            }
+        }
+
+        // 임의의 색상을 가져오는 함수
+        function getRandomColor() {
+            var letters = '0123456789ABCDEF';
+            var color = '#';
+            for (var i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+
+        // 게임 종료 함수
+        function endGame() {
+            isGameOver = true;
+            clearInterval(gameInterval);
+            alert('게임 오버! 점수: ' + score + ', 뱀 길이: ' + snakeLength);
+        }
+
+        addObstacle();
+        var gameInterval = setInterval(function () {
+            if (isGameOver) {
+                return;
+            }
+            gameTimer++;
+            if (gameTimer % 100 === 0) {
+                gameSpeed += 1; // 시간이 지남에 따라 게임 속도 증가
+                addObstacle();
+            }
+
+            context.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 이동 방향 및 거리 계산
+            var dx = mouseX - playerX;
+            var dy = mouseY - playerY;
+            var distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance > 1 && distance > stopThreshold) {
+                var moveX = (dx / distance) * speed * (isAccelerating ? 2 : 1);
+                var moveY = (dy / distance) * speed * (isAccelerating ? 2 : 1);
+                playerX += moveX;
+                playerY += moveY;
+            }
+
+            // 뱀의 몸통 그리기
+            bodyParts.push({ x: playerX, y: playerY });
+            if (bodyParts.length > snakeLength) {
+                bodyParts.shift();
+            }
+
+            for (var i = 0; i < bodyParts.length; i++) {
+                var part = bodyParts[i];
+                context.beginPath();
+                context.arc(part.x, part.y, bodySize, 0, 2 * Math.PI);
+                context.fillStyle = 'blue';
+                context.fill();
+                context.closePath();
+            }
+
+            // 먹이 그리기
+            context.beginPath();
+context.fillStyle = 'red';
+context.arc(foodX, foodY, foodSize / 2, 0, 2 * Math.PI);
+context.fill();
+context.fillStyle = 'brown';
+context.beginPath();
+context.arc(foodX, foodY - foodSize / 4, foodSize / 4, 0, Math.PI);
+context.fill();
+context.closePath();
+
+            // 충돌 감지
+            if (
+                Math.sqrt((playerX - foodX) ** 2 + (playerY - foodY) ** 2) <
+                playerSize / 2 + foodSize / 2
+            ) {
+                // 먹이를 먹었을 때
+                foodX = Math.random() * canvas.width;
+                foodY = Math.random() * canvas.height;
+                score++;
+                snakeLength++;
+            }
+
+            // 장애물 그리기
+            for (var i = 0; i < obstacles.length; i++) {
+                var obstacle = obstacles[i];
+                context.save(); // 현재 변환 상태 저장
+                context.translate(obstacle.x, obstacle.y);
+                context.rotate(obstacle.rotation);
+                context.fillStyle = obstacle.color;
+
+                if (obstacle.type === 'circle') {
+                    context.beginPath();
+                    context.arc(0, 0, obstacle.size / 2, 0, 2 * Math.PI);
+                } else if (obstacle.type === 'triangle') {
+                    context.beginPath();
+                    context.moveTo(0, -obstacle.size / 2);
+                    context.lineTo(obstacle.size / 2, obstacle.size / 2);
+                    context.lineTo(-obstacle.size / 2, obstacle.size / 2);
+                    context.closePath();
+                } else if (obstacle.type === 'rectangle') {
+                    context.fillRect(
+                        -obstacle.size / 2,
+                        -obstacle.size / 2,
+                        obstacle.size,
+                        obstacle.size
+                    );
+                }
+                context.fill();
+                context.restore(); // 이전 변환 상태로 복원
+
+                obstacle.x += obstacle.speedX;
+                obstacle.y += obstacle.speedY;
+                obstacle.rotation += obstacle.rotationSpeed;
+
+                // 장애물 간 충돌 확인
+                for (var j = 0; j < obstacles.length; j++) {
+                    if (i !== j) {
+                        var otherObstacle = obstacles[j];
+                        if (
+                            obstacle.x < otherObstacle.x + otherObstacle.size &&
+                            obstacle.x + obstacle.size > otherObstacle.x &&
+                            obstacle.y < otherObstacle.y + otherObstacle.size &&
+                            obstacle.y + obstacle.size > otherObstacle.y
+                        ) {
+                            // 장애물이 서로 충돌하면, 방향을 반대로 변경
+                            var tempSpeedX = obstacle.speedX;
+                            var tempSpeedY = obstacle.speedY;
+                            obstacle.speedX = otherObstacle.speedX;
+                            obstacle.speedY = otherObstacle.speedY;
+                            otherObstacle.speedX = tempSpeedX;
+                            otherObstacle.speedY = tempSpeedY;
+                        }
+                    }
+                }
+            }
+
+            checkCollisionWithObstacles();
+
+            // 점수, 뱀 길이, 시간 표시
+            document.getElementById('scoreInfo').textContent = '점수: ' + score;
+            document.getElementById('lengthInfo').textContent = '뱀 길이: ' + snakeLength;
+            document.getElementById('timeInfo').textContent = '시간: ' + Math.floor(gameTimer / 60) + '초';
+        }, 1000 / 60);
+
+        // 마우스 클릭 이벤트
+        canvas.addEventListener('mousedown', function (event) {
+            if (event.button === 0) {
+                isAccelerating = true;
+            }
+        });
+
+        // 마우스 떼기 이벤트
+        canvas.addEventListener('mouseup', function (event) {
+            if (event.button === 0) {
+                isAccelerating = false;
+            }
+        });
+
+        // 마우스 이동 이벤트
+        canvas.addEventListener('mousemove', function (event) {
+            mouseX = event.clientX - canvas.getBoundingClientRect().left;
+            mouseY = event.clientY - canvas.getBoundingClientRect().top;
+        });
+    </script>
+</body>
+</html>
